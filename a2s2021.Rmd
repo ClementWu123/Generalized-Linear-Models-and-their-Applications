@@ -1,0 +1,335 @@
+---
+title: __Stat 431 Assignment 2 Spring 2021__
+subtitle: _Due by 4:00pm EDT on Friday June 18, 2021 via Crowdmark_
+output: pdf_document
+fontsize: 10pt
+header-includes: \usepackage{amsmath}
+---
+
+__Notes for Submission:__ 
+
+Upload your assignment directly to Crowdmark via the link you receive by email. It is your responsibility to make sure your solution to each question is submitted in the correct section, that the pages are rotated correctly, and that everything is legible. *Be sure to give yourself ample time to upload your solutions before the deadline.*
+
+* Typed solutions are preferred. The R markdown file used to generate the assignment will be provided for students who wish to use this as a starting point for their solution.
+* Organization and comprehensibility are part of a full solution. Consequently, points will be deducted for solutions that are not organized or are incomprehensible.
+* Be sure to show your work and include all R code and relevant output for each question (where applicable). You should use R comments to document your code but do not embed your solution/interpretation within the R comments.
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(tidy=TRUE, comment="", collapse=TRUE, prompt=TRUE, echo = TRUE, tidy.opts=list(width.cutoff=90))
+library(knitr)
+```
+
+\vspace{18pt}
+
+__Question 1 [12 marks]__
+Adapted from Problem 9.4 of Dunn \& Smyth (2018)
+
+In Topic 2e and in Sect. 9.3 (p. 336), the probit binomial glm was developed as a threshold model. Here consider using the _logistic distribution_ with mean $\mu$ and variance $\sigma^2$ (standard deviation $\sigma$) as the tolerance distribution. The logistic distribution has the probability density function (PDF):
+$$f(y;\mu,\sigma^2) = \frac{\pi \exp\left\{-(y-\mu)\pi/(\sigma\sqrt{3})\right\}}{\sigma\sqrt{3}\left[ 1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}\right]^2}$$
+for $-\infty < y < \infty$, $-\infty < \mu < \infty$, and $\sigma >0$.
+
+(a) __[2 marks]__ Show that the logistic distribution is not a member of the exponential family. 
+
+    $$
+    \begin{aligned}
+    f(y;\mu,\sigma^2) &= \frac{\pi \exp\left\{-(y-\mu)\pi/(\sigma\sqrt{3})\right\}}{\sigma\sqrt{3}\left[ 1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}\right]^2}\\
+    &= exp{log(\frac{\pi \exp\left\{-(y-\mu)\pi/(\sigma\sqrt{3})\right\}}{\sigma\sqrt{3}\left[ 1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}\right]^2})}\\
+    &= \exp\{log(\pi \exp\left\{-(y-\mu)\pi/(\sigma\sqrt{3})\right\})-log(\sigma\sqrt{3}\left[ 1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}\right]^2)\}\\
+    &=\exp\{log\pi - (y-\mu)\pi/(\sigma\sqrt{3})-log(\sigma\sqrt{3})-2log([ 1 + \exp\{ -(y-\mu)\pi/(\sigma\sqrt{3})\}])\}\\
+    &\text{Therefore, we will have }\theta=-\frac{\pi}{\sigma\sqrt{3}}, \phi=1, a(\phi)=1\\
+    b(\theta)&=\mu(-\frac{\pi}{\sigma\sqrt{3}})=\mu\theta\\
+    c(y;\phi)&=log\pi-log(\sigma\sqrt{3})-2log(1 + \exp\{ -(y-\mu)\pi/(\sigma\sqrt{3})\})\\&=log\pi-log(\frac{-\pi}{\theta})-2log(1+\exp\{ (y-\mu)\theta\})\\
+    &\text{Since }c(y; \phi)\text{ contains }\theta\text{ in the formula, which is not allowed}\\
+    &\text{Therefore, the logistic distribution is not a member of the exponential family}
+    \end{aligned}
+    $$
+
+(b) __[3 marks]__ Determine the cumulative distribution function (CDF) for the logistic distribution.
+
+    $$
+    \begin{aligned}
+    F(y)&=\int_{-\infty}^y \frac{\pi \exp\left\{-(s-\mu)\pi/(\sigma\sqrt{3})\right\}}{\sigma\sqrt{3}\left[ 1 + \exp\left\{ -(s-\mu)\pi/(\sigma\sqrt{3}) \right\}\right]^2} ds\\
+    \text{Let }u&=1 + \exp\left\{ -(s-\mu)\pi/(\sigma\sqrt{3}) \right\}, du=-\frac{\pi}{\sigma\sqrt{3}}\exp\left\{ -(s-\mu)\pi/(\sigma\sqrt{3}) \right\}ds\\
+    \frac{\pi}{\sigma\sqrt{3}}ds&=-\frac{1}{u-1}du, \text{ sub this into the original we get:}\\
+    F(y)&=\int_{\infty}^{1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}} \frac{-(u-1)}{(u-1)u^2} du\\
+    &=\int_{1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}}^{\infty} \frac{(u-1)}{(u-1)u^2} du\\
+    &=\int_{1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}}^{\infty} \frac{1}{u^2} du\\
+    &=\int_{1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}}^{\infty} \frac{1}{u^2} du\\
+    &=-\frac{1}{u}\vert_{1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}}^{\infty}\\
+    &=\frac{1}{1 + \exp\left\{ -(y-\mu)\pi/(\sigma\sqrt{3}) \right\}}
+    \end{aligned}
+    $$
+
+(c) __[4 marks]__ Plot the PDF and CDF for the logistic distribution with mean 0 and variance 1. Also plot the same graphs for the normal distribution with mean 0 and variance 1. Comment on the similarities and differences between the two sets of functions.
+
+```{r}
+    
+pdf <- function(y, m, s) {
+    pi*exp(-(y-m)*pi/(s*sqrt(3)))/((s*sqrt(3))*(1+exp(-(y-m)*pi/(s*sqrt(3))))^2);
+}
+
+cdf <- function(y, m, s) {
+    1/(1+exp(-(y-m)*pi/(s*sqrt(3))))
+}
+
+y <- seq(-3,3,0.1)
+
+plot(y, pdf(y, 0, 1),type="l", col="red",main="logis pdf vs norm pdf")
+lines(y, dnorm(y, 0, 1), col="blue")
+legend("topleft",legend=c("logistic", "normal"),col=c("red", "blue"),lty=1)
+plot(y, cdf(y, 0, 1), type="l",col="red",main="logis cdf vs norm cdf")
+lines(y, pnorm(y, 0, 1), col="blue")
+legend("topleft",legend=c("logistic", "normal"),col=c("red", "blue"),lty=1)
+```
+
+**Comments:** From two graphs, we can see that both distributions have nearly the same tails but a variation in the middle. In the middle part in pdf plot, logistic distribution increases faster than normal distribution and logistic distribution has a higher value. From cdf plot, we see that from -1 to 0, logistic distribution has a higher value but from 0 to 1, normal distribution has a higher value.
+
+(d) __[3 marks]__ Show that if we use the logistic distribution as the tolerance distribution then this corresponds to a binomial glm with a logistic link function. What is the relationship between $(\beta_0, \beta_1)$ the parameters of a simple logistic regression model and $(\mu, \sigma)$ the mean and standard deviation of the logistic tolerance distribution?
+    
+    $$
+    \begin{aligned}
+    \text{ Let } \Pi(x)&=F(x)=\frac{1}{1 + \exp\left\{ -(x-\mu)\pi/(\sigma\sqrt{3}) \right\}}\\
+    \text{ Then } g(\Pi)&=logit(\Pi)=log(\frac{\Pi}{1-\Pi})\\
+    &=log(\frac{\frac{1}{1 + \exp\left\{ -(x-\mu)\pi/(\sigma\sqrt{3}) \right\}}}{1-\frac{1}{1 + \exp\left\{ -(x-\mu)\pi/(\sigma\sqrt{3}) \right\}}})\\
+    &=log(\frac{1}{\exp\left\{ -(x-\mu)\pi/(\sigma\sqrt{3}) \right\}})\\
+    &=(x-\mu)\pi/(\sigma\sqrt{3})=\beta_0+\beta_1 x\\\\
+    &\text{Therefore, }\beta_0=-\frac{\mu\pi}{\sigma\sqrt{3}}, \beta_1=\frac{\pi}{\sigma\sqrt{3}}\\
+    &\text{Sub these two into }\Pi(x)\text{ we will get:}\\
+    \Pi(x)&=\frac{1}{1 + \exp\left\{ -(x-\mu)\pi/(\sigma\sqrt{3}) \right\}}\\
+    &=\frac{1}{1+\exp\left\{ -\beta_0-\beta_1 x\right\}}\\
+    &=\frac{\exp\left\{ \beta_0+\beta_1 x\right\}}{1+\exp\left\{ \beta_0+\beta_1 x\right\}}\\
+    &\text{, which is a binomial glm with a logistic link function as required}
+    \end{aligned}
+    $$
+    
+
+
+\newpage
+
+__Question 2 [12 marks]__
+Adapted from Problems 9.12 of Dunn \& Smyth (2018)
+
+Chromosome aberration assays are used to determine whether or not a substance induces structural changes in chromosomes. One study (Williams (1988)) compared the results of two substances at various doses (Table 9.12). A large number of cells were sampled at each dose to see how many were aberrant.
+
+\begin{center}
+{\bf Table 9.12} The number of aberrant cells for different doses of two substances
+
+\begin{tabular}{cccccccc}
+\hline
+& Dose & No. cell & No. cells & & Dose & No. cell & No. cells\\
+Substance & (in mg/ml) & samples & aberrant & Substance & (in mg/ml) & samples & aberrant\\
+\hline
+A & 0 & 400 & 3 & B & 0.0 & 400 & 5\\
+A & 20 & 200 & 5 &  B & 62.5 & 200 & 2\\
+A & 100 & 200 & 14 & B & 125.0 & 200 & 2\\
+A & 200 & 200 & 4 & B & 250.0 & 200 & 4\\
+ & & & & B & 500.0 & 200 & 7\\
+\hline
+\end{tabular}
+\end{center}
+
+(a) __[3 marks]__ Fit one or more binomial glm(s) with the logistic link to determine if there is evidence of a difference between the two substances. Justify your conclusions.
+
+    ```{r}
+    s <- factor(c("A","A","A","A","B","B","B","B","B"))
+    d <- c(0,20,100,200,0,62.5,125,250,500)
+    c <- c(400,200,200,200,400,200,200,200,200)
+    a <- c(3,5,14,4,5,2,2,4,7)
+    y <- cbind(a,c-a)
+    
+    m1 <- glm(y~s+d, family = binomial(link = logit))
+    summary(m1)
+    ```
+
+**Comment:** Consider the null hypothesis $H_0$=0 where A and B are indifferent. we see that the p-value of $\beta_1$ is 0.02080<0.05, there is an evidence against the null hypothesis. Therefore, we reject $H_0$ and conclude that there is a difference between substances.
+
+(b) __[3 marks]__ Use the dose and the logarithm of dose as an explanatory variable in separate glms, and compare. Which is better, and why?
+
+    ```{r}
+    d <- d+1/10000000000  #since d contains zero
+    m1 <- glm(y~s+d, family = binomial(link = logit))
+    summary(m1)
+    m2 <- glm(y~s+log(d), family = binomial(link = logit))
+    summary(m2)
+    ```
+
+**Comment:**Then the $\hat{\beta}_{2a}$ is 0.002689 and $\hat{\beta}_{2b}$=0.04005. Since 1 unit increase in dose in model 1 increases the responses by 0.002689 and 1 unit increase in dose in model 2 by 0.04005. Therefore, the model with log of dose has a mroe significant impact on the responses. We will say that the second model is better than the first one.
+
+(c) __[3 marks]__ Compute the 95% confidence interval for the dose regression parameter, and interpret the regression parameter.
+
+    Since, $\hat{\beta}_2=0.002689$ and $se(\hat{\beta}_2)=0.001013$, we will obtain the confidence interval as:
+
+    ```{r}
+    c(0.002689-1.96*0.001013, 0.002689+1.96*0.001013)
+    ```
+
+    $\beta_0$ is the log odds of aberrant cells where the substance A and 0 mg/ml dose are used.
+    $\beta_1$ is the log odds of aberrant cells using substance A versus substance B.
+    $\beta_2$ is the log odds of aberrant cells does up by 0.002689 with one unit increase in doses.
+
+(d) __[3 marks]__ Williams (1988) states that the spontaneous aberration rate is typically around 2%. Using the best fitting logistic regression model, determine the dose of each substance at which we expect an aberration rate greater than 2%.
+
+    ```{r}
+    log(0.02/(1-0.02))
+    ```
+    Therefore, $\beta_0$+$\beta_1x_1$+$\beta_2x_2$=$-3.816884-0.802928x_1+0.002689x_2\geq-3.89182$
+    
+    For substance A, $x_1$=0, we will have the doses:
+    
+    ```{r}
+    (-3.89182+3.816884)/0.002689
+    ```
+    For substance B, $x_1$=1, we will have the doses:
+    
+    ```{r}
+    (-3.89182+3.816884+0.802928)/0.002689
+    ```
+
+    **Comment:** Therefore, even we don't use doses, we will get aberrant rate greater than or equal to 2%. But if we are using substance B, we must use over 270.7296 mg/ml to get the aberrant rate over 2%. 
+    
+
+\newpage
+
+__Question 3 [16 marks]__
+
+Browning et al. (2021) conducted a survey of university students in the United States from mid-March to early-May 2020 to assess the psychological impacts COVID-19 on students. We will use a subset of the data from this survey to address one of the study objectives: ``to evaluate potential sociodemographic, lifestyle-related, and awareness of people infected with COVID-19 risk factors that could make students more likely to experience these [psychological] impacts.'' The analysis that you will conduct in this assignment question is simpler than that used by the authors and therefore you should not expect your results exactly match those in the published manuscript.
+
+Download the original data from \url{https://doi.org/10.1371/journal.pone.0245327.s010} and save it in your R Working Directory. The following R code reads in the original data file and prepares it for our analysis. We will restrict our analysis to the representative sample of students taken from North Carolina State University with complete data. You must run this code before proceeding the answer the questions below.\
+
+\footnotesize
+```{r}
+# Save the original .csv file in your R Working Directory and then run this code block to input the data and prepare it for our analysis.
+COVIDdata = read.csv("journal.pone.0245327.s010.csv")
+
+# Limit the data to students from NCSU and a restricted set of explanatory variables
+COVIDdata_NCSU = COVIDdata[ (!is.na(COVIDdata$Source) & (COVIDdata$Source=="NCState")), names(COVIDdata)%in%c("Health_General","Hrs_Screen","Hrs_Outdoor","Hrs_Exercise","Class_Self","Infected_Any","Female","BMI","Educ_College_Grad","Age","Classification_High","Ethnoracial_Group_White1_Asian2","Age_18to25")]
+
+# Remove observations with missing Ethnoracial data (all other variable are complete)
+COVIDdata_NCSU = COVIDdata_NCSU[!is.na(COVIDdata_NCSU$Ethnoracial_Group_White1_Asian2),]
+
+# Create factor variables where necessary
+COVIDdata_NCSU$Infected_Any = factor(COVIDdata_NCSU$Infected_Any)
+COVIDdata_NCSU$Educ_College_Grad = factor(COVIDdata_NCSU$Educ_College_Grad)
+COVIDdata_NCSU$Ethnoracial_Group_White1_Asian2 = factor(COVIDdata_NCSU$Ethnoracial_Group_White1_Asian2)
+COVIDdata_NCSU$Age_18to25 = factor(COVIDdata_NCSU$Age_18to25)
+
+# str(COVIDdata_NCSU) # Display data set structure, commented out to save space
+```
+\normalsize
+
+The following variables are included in our analysis data set:
+
+* `Health_General`: Numeric measure of self-reported general health on range from (1=poor to 5=excellent)
+* `Hrs_Screen`: Numeric measure of hours of screen time over the previous 24 hours
+* `Hrs_Outdoor`: Numeric measure of hours spent outdoors over the previous 24 hours
+* `Hrs_Exercise`: Numeric measure of hours spent exercising over the previous 24 hours
+* `Class_Self`: Numeric measure of self-reported socioeconomic class (1=working class to 5=upper class)
+* `Infected_Any`: Binary indicator for knowing someone infected with COVID-19 
+* `Female`:  Numeric measure gender (=1 female to =0 male, includes some non-integer values)
+* `BMI`: Numeric measure of self-reported Body Mass Index (kg/m$^2$)
+* `Educ_College_Grad`: Binary variable =1 for graduate students and =0 for undergraduate students
+* `Age`: Categorical/factor variables at five levels: "18 to 24","25 to 32", "33 to 44", ...
+* `Classification_High`:  Binary indicator that the student has a high COVID-19 psychological impact profile (the response of interest)
+* `Ethnoracial_Group_White1_Asian2`: Categorical/factor variables at three levels: 0="Black or Hispanic", 1="Non-Hispanic White", 2="Non-Hispanic Asian"
+* `Age_18to25`: Binary variable =1 for Age 18 to 24 and =0 otherwise (yes, this appears to have been incorrectly labeled 18to25 instead of 18to24)\
+
+(a) __[4 marks]__ The R code below fits a logistic regression model to this data. Provide the estimate and interpretation of the _exponentiated_ regression parameters associated with: `Hrs_Screen`, `Infected_Any`, and both of the `Ethnoracial_Group_White1_Asian2` variables.\
+
+\footnotesize
+```{r}
+# Fit a main effects logistic regression model
+model1 = glm(Classification_High ~ Female + Age + Ethnoracial_Group_White1_Asian2 + Class_Self + Health_General + BMI + Hrs_Screen + Hrs_Outdoor + Hrs_Exercise + Educ_College_Grad + Infected_Any, family=binomial(link="logit"), data=COVIDdata_NCSU)
+```
+\normalsize
+
+```{r}
+summary(model1)
+```
+
+Estimate:
+
+```{r}
+exp(0.034977) # Hrs_Screen
+exp(0.376658) # Infected_Any
+exp(0.280955) # Ethnoracial_Group_White1_Asian21
+exp(0.550986) # Ethnoracial_Group_White1_Asian22
+```
+ 
+**Hrs_screen: the odds ratio of the response of interest increases by 1.035596 with one unit increases in numeric measure of hours of screen time over the previous 24 hours, while other variables remain fixed.**
+
+**Infected_Any: the odds ratio of the response of interest with knowing someone infected with COVID-19 versus not-known while keeping other variables fixed.**
+
+**Ethnoracial_Group_White1_Asian21: the odds ratio of the response of interest who are Non-Hispanic White versus who are Black or Hispanic while keeping other variables fixed.**
+
+**Ethnoracial_Group_White1_Asian22: the odds ratio of the response of interest who are Non-Hispanic Asian versus who are Black or Hispanic while keeping other variables fixed.**
+    
+(b) __[3 marks]__ The `Age` variable has five levels and is represented in `model1` by four binary variables. Fit a new model with the same linear predictor as `model1` but without the `Age` variable (call this `model2`). Use this model to conduct a deviance test of the null hypothesis that `Age` in not an important explanatory variable. Be sure to carefully state the null and alternative hypotheses in terms of the regression coefficients (be explicit about which model you are referring to) and give the formula of the test statistic and its asymptotic distribution under the null hypothesis. What is the conclusion of the test?
+
+```{r}
+model2 = glm(Classification_High ~ Female + Ethnoracial_Group_White1_Asian2 + Class_Self + Health_General + BMI + Hrs_Screen + Hrs_Outdoor + Hrs_Exercise + Educ_College_Grad + Infected_Any, family=binomial(link="logit"), data=COVIDdata_NCSU)
+
+summary(model2)
+```
+
+The full model model1 is $\beta_0+\beta_1x_{i1}+\beta_2x_{i2}+\beta_3x_{i3}+\beta_4x_{i4}+\beta_5x_{i5}+\beta_6x_{i6}+\beta_7x_{i7}+\beta_8x_{i8}+\beta_9x_{i9}+\beta_{10}x_{i10}+\beta_{11}x_{i11}+\beta_{12}x_{i12}+\beta_{13}x_{i13}+\beta_{14}x_{i14}+\beta_{15}x_{i15}$ where $x_{i1}$ represents `Female`, $x_{i2}$ represents `Age25 to 32`, $x_{i3}$ represents `Age33 to 44`, $x_{i4}$ represents `Age45 to 54`, $x_{i5}$ represents `Age55 to 64`, $x_{i6}$ represents `Ethnoracial_Group_White1_Asian21`, $x_{i7}$ represents `Ethnoracial_Group_White1_Asian22`,  $x_{i8}$ represents `Class_Self`, $x_{i9}$ represents `Health_General`, $x_{i10}$ represents `BMI`, $x_{i11}$ represents `Hrs_Screen`, $x_{i12}$ represents `Hrs_Outdoor`, $x_{i13}$ represents `Hrs_Exercise`, $x_{i14}$ represents `Educ_College_Grad1`, $x_{i15}$ represents `Infected_Any`.
+
+Since in the reduced model, all ages are gone, we will have a null hypothesis $H_0:\beta_2=\beta_3=\beta_4=\beta_5=0$ and $H_A: \beta_2\neq0 \space or \beta_3\neq0\space or \beta_4\neq0\space or \beta_5\neq 0$.
+
+Then, since the Deviance test statistic is $D=-2log[R(\hat{\pi})=-2log(\frac{L(\hat{\pi})}{\tilde{L(\pi)}})]=-2[l(\hat{\pi})-l(\tilde{\pi})]\thicksim X^2_{(n-p)}$ where $\tilde{\pi}$ is model1 and $\hat{\pi}$ is model2, $\Delta D=D_0 - D_A=-2[l(\hat{\pi})-l(\tilde{\pi})]\thicksim X^2_{(n-p)}$
+
+```{r}
+1-pchisq(model2$deviance-model1$deviance, 1300-1296)
+```
+
+Since 0.08657205>0.05, there's no evidence against the null hypothesis. We say that the reduced model 2 is adequate comparing to full model 1.
+
+(c) __[3 marks]__ An alternative to dropping `Age` from `model1` is to replace it with the binary `Age_18to25` variable.  Fit a new model with the same linear predictor as `model1` but with `Age_18to25` instead of `Age` (call this `model3`). Use this model to conduct a deviance test of the null hypothesis that this reparameterization is adequate.
+Be sure to carefully state the null and alternative hypotheses in terms of the regression coefficients (be explicit about which model you are referring to) and give the formula of the test statistic and its asymptotic distribution under the null hypothesis. What is the conclusion of the test?
+
+```{r}
+model3 = glm(Classification_High ~ Female + Ethnoracial_Group_White1_Asian2 + Age_18to25 + Class_Self + Health_General + BMI + Hrs_Screen + Hrs_Outdoor + Hrs_Exercise + Educ_College_Grad + Infected_Any, family=binomial(link="logit"), data=COVIDdata_NCSU)
+summary(model3)
+```
+
+$H_0: \beta_2=\beta_3=\beta_4=\beta_5$ vs $H_A:$ one of the coefficient does not equal to others.
+
+$\Delta D=D_0 - D_A=-2[l(\hat{\pi})-l(\tilde{\pi})]\thicksim X^2_{(n-p)}$ where $\tilde{\pi}$ is model 1 and $\hat{\pi}$ is model 3.
+
+```{r}
+1-pchisq(model3$deviance-model1$deviance, 1299-1296)
+```
+
+Since 0.3513265>0.05, we can not reject the null hypothesis. Therefore, the reduced model 3 is adequate comparing to model 1.
+
+(d) __[2 marks]__ Regardless of your conclusions from part (b) and (c) use `model3` for parts (d) to (f). Calculate the model-based probability a NCSU student with the same personal characteristics as you (in April 2020) would have a high COVID-19 psychological impact profile. 
+Or if you do not wish to use your own personal characteristics you may instead make-up the profile of a hypothetical student. 
+
+```{r}
+x <- c(1,0,0,1,1,1,4,21,8,10,0,0,0)
+exp(x%*%summary(model3)$coefficients[1:13])/(1+exp(x%*%summary(model3)$coefficients[1:13]))
+```
+
+I will have 30.96753% probability of having a high COVID-19 psychological impact profile.
+
+(e) __[2 marks]__ Calculate a 95\% confidence interval for your estimate from part (d).
+
+```{r}
+tmp <- summary.glm(model3)
+
+v <- tmp$cov.unscaled
+
+x <- as.matrix(x,13,1)
+
+t(x)%*% v %*% x
+
+c(0.3096753-1.96*sqrt(0.2707391), 0.3096753+1.96*sqrt(0.2707391))
+```
+
+Therefore, the 95% confidence interval is (-0.7101636, 1.3295142)
+
+(f) __[2 marks]__ Write one paragraph summarizing the results and highlighting the important associations identified by this logistic regression model.
+
+As we can see, a normal student like me are less likely to be identified as a high COVID-19 psychological impact profile because I have only 30.96753% probability. As we can see in the model, "female" has the lowest p-value with only 1.9e-07, this implies that "female" is an important association with the model. Another one is "health general" with p-value of 0.000166. Even though it has a much higher p-value than "female", it's still a main factor of psychological impact, which makes sense in the real life. "Educ_College_Grad1" has a p-value of 0.930786. This means that the logistic regression model not really depends on the education level.
+

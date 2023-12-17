@@ -1,0 +1,393 @@
+---
+title: __Stat 431 Assignment 3 Spring 2021__
+subtitle: _Due by 4:00pm EDT on Friday July 23, 2021 via Crowdmark_
+output: pdf_document
+fontsize: 10pt
+header-includes: \usepackage{amsmath}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(tidy=TRUE, comment="", collapse=TRUE, prompt=TRUE, echo = TRUE, tidy.opts=list(width.cutoff=90))
+library(knitr)
+```
+
+\vspace{18pt}
+
+__Question 1 [13 marks]__
+Adapted from Problem 4.5 of Dobson & Barnett (2018)
+
+
+The data below show the numbers of cases of AIDS in Australia by date of diagnosis for successive 3-month periods from 1984 to 1988. (Data from National Centre of HIV Epidemiology and Clinical Research, 1994) 
+
+\begin{center}
+\begin{tabular}{crrrr}
+\hline
+& \multicolumn{4}{c}{Quarter}  \\
+Year & 1& 2& 3& 4  \\
+\hline
+1984 & 1  & 6  & 16 & 23 \\ 
+1985 & 27 & 39 & 31 & 30 \\
+1986 & 43 & 51 & 63 & 70 \\
+1987 & 88 & 97 & 91 & 104 \\
+1988 &110 &113 &149 & 159 \\
+\hline
+\end{tabular}
+\end{center}
+
+(a) __[1 mark]__ Plot the number of cases $y_i$ against time period $i$ ($i=1,\ldots,20$). Comment on the relationship you see.
+
+```{r}
+period <- 1:20
+case <- c(1,6,16,23,27,39,31,30,43,51,63,70,88,97,91,104,110,113,149,159)
+plot(period,case,main = "Cases vs Period", xlab = "periods", ylab = "cases")
+```
+
+**Comment:**They seem to form a linear relationship. With periods increase, the number of cases also increase.
+
+(b) __[3 marks]__ A possible model is the Poisson distribution with parameter $\lambda_i = i^\theta$, or equivalently
+$$\log \lambda_i = \theta \log i$$
+Find the MLE of $\theta$. Plot $\log y_i$ against $\log i$. Comment on the relationship you see. 
+
+$$
+\begin{aligned}
+\text{Likelyhood function: } L(\lambda_i)&=\prod_{i=1}^n \frac{\lambda_i^{y_i}exp(-\lambda_i)}{y_i!}\\
+ \text{So, }L(\theta)&=\prod_{i=1}^n \frac{i^{\theta y_i}exp(-i^{\theta})}{y_i!}\\
+ \text{Then, Log likely function: } l(\theta)&=\sum_{i=1}^n [\theta y_i log(i)-i^\theta-log(y_i)]\\
+ \text{Score function: } S(\theta)&=\sum_{i=1}^n [y_ilog(i)-i^\theta log(i)]\\
+ \text{Set the score function to 0, then we will have,}\\
+ \sum_{i=1}^n [y_ilog(i)-i^\theta log(i)]&=0\\
+\end{aligned}
+$$
+
+```{r}
+score <- function(theta) {
+  sum(case*log(period)-period^theta * log(period))
+}
+uniroot(score, lower=0, upper=2)$root
+
+plot(log(period), log(case), xlab = "log periods", ylab = " log cases")
+```
+
+**Comment:** The MLE of $\theta$ in this question is 1.697999. From the plot, we can still see a linear relationship between period and cases
+
+(c) __[3 marks]__ Fit the following log-linear model to this data:
+$$\log \lambda_i = \beta_1 + \beta_2 x_i$$
+where $x_i=\log i$. Provide a precise written interpretation of the regression parameters. Add the fitted regression line to the plot from (b).
+
+```{r}
+m1 <- glm(case~log(period),family = poisson(link="log"))
+summary(m1)
+```
+
+**Comment:** $\beta_1$ is the log of the number of AIDS cases in Australia in 1984 the first quarter. $\beta_2$ is the log relative rate of number of AIDS cases in Australia when log of period increases  by one unit.
+
+```{r}
+plot(log(period), log(case), xlab = "log periods", ylab = " log cases")
+abline(a=0.99600, b=1.32661)
+```
+
+(d) __[3 marks]__ Fit the model implied by the relationship in (b) using a log-linear model. Add the fitted regression line to the plot from (b). Based on a visual assessment which model do you prefer and why?
+
+```{r}
+m2 <- glm(case~log(period)-1,family = poisson(link="log"))
+summary(m2)
+plot(log(period), log(case), xlab = "log periods", ylab = " log cases")
+abline(a=0, b=1.69800)
+```
+
+**Comment:** I prefer the model in part (c) because the distance between points in middle of the plot and the line are smaller than the second model. 
+
+(e) __[2 marks]__ Test the null hypothesis that the model in (b) is adequate as compared to the model in (c). Be sure to state the null and alternative hypotheses, give the formula and distribution of the test statistic, calculate the test statistic, calculate the p-value and state the conclusion of the test. Based on this statistical assessment which model do you prefer?
+
+$$
+\begin{aligned}
+H_0:\beta_1=0\text{  vs  }H_A:\beta_1\neq 0\\
+\text{we will use the wald based test to test the null hypothesis}\\
+Z=\frac{\hat{\beta}_1 - 0}{se(\hat{\beta}_1)}=\frac{0.99600}{0.16971}=5.868835 \sim N(0,1)
+\end{aligned}
+$$
+
+```{r}
+2*pnorm(-abs(5.868835))
+```
+
+**Comment:** The p-value is 4.388679e-09, which is smaller than 0.05. We reject the null hypothesis and conclude that the intercept can not be 0. Based on the statistic assessment, we still prefer to use the model from part (c), which has two parameters.
+
+(f) __[1 mark]__ Return to the plot from part (a) and add the fitted curves from the models in (c) and (d). Based on this visual assessment which model do you prefer and why?
+
+```{r}
+plot(period,case,main = "Cases vs Period", xlab = "periods", ylab = "cases")
+lines(period, m1$fitted.values, col='red')
+lines(period, m2$fitted.values, col='blue')
+```
+
+**Comment:** Based on the plot, I prefer the model from (c), the line of model from (c) goes through the points, while the line of model from (d) lies a little bit below the points, which provides a worse representation.
+
+\newpage
+
+\vspace{24pt}
+
+__Question 2 [15 marks]__
+Adapted from Problem 8.10 of Lachin (2000)
+
+Fleming and Harrington (1991) present the results of a randomized clinical trial of the effects of gamma interferon versus placebo on the incidence of serious infections among children with chronic granulotomous disease (CGD). For each subject the number of infections experienced and the total duration of follow-up are presented ... the data set includes the patient `id`, number of severe infections experienced (`nevents`), the number of days of follow-up (`futime`) and the following covariates:
+
+* `z1`: treatment group: interferon (1) versus placebo (2); 
+* `z2`: Inheritance pattern: X-linked (1) versus autosomal recessive (2); 
+* `z3`: Age (years); 
+* `z4`: Height (cm); 
+* `z5`: Weight (kg); 
+* `z6`: Corticosteroid use on entry: yes (1) versus no (2); 
+* `z7`: Antibiotic use on entry: yes (1) versus no (2); 
+* `z8`: Gender: male (1) versus female (2); and 
+* `z9`: Type of hospital: NIH (1), other US (2), Amsterdam (3), other European (4). 
+ 
+Use these data to conduct the following analyses.\
+
+\footnotesize
+```{r}
+# Input the Fleming and Harrington Count Data (fhcnt) and name the covariates
+fhcnt = read.table("https://biostatcenter.gwu.edu/sites/biostatcenter.gwu.edu/files/Lachin%20Files/fhcnt.txt",header=F)
+names(fhcnt)=c("id","z1","z2","z3","z4","z5","z6","z7","z8","z9","nevents","futime")
+```
+\normalsize
+
+(a) __[2 marks]__ Assume the infection counts follow a time homogeneous Poisson process. Fit the main effects Poisson GLM to the data. Be sure to declare covariates as factors, where necessary, and use an appropriate offset term. Print the R summary object for your fitted model.
+
+```{r}
+fhcnt$z1 <- as.factor(fhcnt$z1)
+fhcnt$z2 <- as.factor(fhcnt$z2)
+fhcnt$z6 <- as.factor(fhcnt$z6)
+fhcnt$z7 <- as.factor(fhcnt$z7)
+fhcnt$z8 <- as.factor(fhcnt$z8)
+fhcnt$z9 <- as.factor(fhcnt$z9)
+model <- glm(nevents~z1+z2+z3+z4+z5+z6+z7+z8+z9+offset(log(futime))
+             , family=poisson(link="log"), data=fhcnt)
+summary(model)
+```
+
+(b) __[3 marks]__ Conduct a residual analysis of the model from part (a). Include at least one scatterplot and one quantile-quantile plot. Investigate and explain any patterns you see in these plots. Are you satisfied with the fit of the model?
+
+```{r}
+residual <- residuals.glm(model,"deviance")
+fitted <- model$fitted.values
+plot(fitted, residual)
+abline(h=-1.96, col="red")
+abline(h=1.96, col="red")
+
+qqnorm(residual)
+abline(a=0,b=1, col="red")
+```
+
+**Comment:** We see from the residual plot that the points form several curves and going down with fitted value. They are not distributed randomly. Most points are in the interval. From the qq plots, we see that points in the middle are shifting away from the line. Both plots indicate that the fitted model does not follow a normal distribution. So, I'm not satisfied with the model.
+
+
+
+Regardless of your conclusion in (b), use the model from (a) to answer the following parts.
+
+(c) __[3 marks]__ Is treatment with interferon effective in reducing serious infections among children with CGD? Justify your response with an appropriate estimate, its precise interpretation, and 95% confidence interval.
+
+**Comments:** Yes, it is effective. Since the question is asking for the effectiveness of treatment, we will look at the treatment group, which is z1. From the fitted model, we see that the estimate of log of relative rate of placebo vs interferon is 1.156140. We can take the exponential and get the relative rate of taking placebo vs interferon is 3.177644. This means that group taking placebo is more likely to cause serious infections. Therefore, treatment with interferon is considered effective.
+
+```{r}
+c(exp(1.156140-0.277853*1.96), exp(1.156140+0.277853*1.96))
+```
+
+Therefore, the 95% confidence interval is (1.843283, 5.477955)
+
+(d) __[3 marks]__ Estimate the relative rate of serious infections for children treated at a hospital in Amsterdam versus those treated at other European hospitals. Include a 95% confidence interval with your estimate.
+
+
+```{r}
+#relative risk
+exp(-0.955742-(-0.788223))
+
+#95% confidence interval
+x <- as.matrix(c(0,0,0,0,0,0,0,0,0,0,1,-1), ncol=1)
+v <- summary(model)$cov.unscaled
+se <- sqrt(t(x)%*%v%*%x)
+dif <- -0.955742-(-0.788223)
+c(exp(dif-1.96*se), exp(dif+1.96*se))
+```
+
+(e) __[2 marks]__ Estimate the number of infections that a 12 year old male child, 142 cm tall, 34 kg in weight, with X-linked inheritance who was on corticosteroids but not antibiotics at entry, and was randomized the the treatment group at a non-NIH US hospital would expect to experience over one year.
+
+```{r}
+coef <- model$coefficients
+x <- as.matrix(c(1,0,0,12,142,34,0,1,0,1,0,0), ncol=1)
+exp(sum(coef*x)+log(365.25))
+```
+
+Therefore, the number of infections that this particular child will expect to experience over one year is 4.667999.
+
+(f) __[2 marks]__ Write one paragraph summarizing the results and highlighting the important associations identified by this log linear model.
+
+**Comment:** From p value, we see that z1 (treatment group), z2 (inheritance pattern), z6 (Corticosteriod use on entry) do affect the number of infections as they have really small p values comparing to 0.05, while z4 (height), z5 (weight), z7 (antibiotic?), z9 (type of hospital) do not really affect the number of infections. On top of that, we see that using interferon will make a huge difference as it significantly reduces the risk of causing infection and the relative rate is 3.177644. On the other hand, young age do not have an obvious advantage comparing to older ages. There might be an advatage of taking treatment in Amsterdam, but we need to details to support that.
+
+
+\newpage
+
+__Question 3 [12 marks]__ 
+Adapted from Problem 7.6 of Agresti (2007) and 7.4 of Agresti (2018)
+
+At the website \url{www.stat.ufl.edu/~aa/intro-cda/data} for the second edition of this book, the MBTI data file cross-classifies the MBTI Step II National Sample on four binary scales of the Myers–Briggs personality test: Extroversion/Introversion (E/I), Sensing/iNtuitive (S/N), Thinking/Feeling (T/F), and Judging/Perceiving (J/P). The 16 cells in this table correspond to the 16 personality types: ESTJ, ESTP, ESFJ, ESFP, ENTJ, ENTP, ENFJ, ENFP, ISTJ, ISTP, ISFJ, ISFP, INTJ, INTP, INFJ, INFP. Also collected was data on whether individuals report smoking or drinking alcohol frequently which we will ignore for the time being. The code below inputs the data set and prints out the 4-way ($2 \times 2 \times 2 \times 2$) contingency table.\
+
+\footnotesize
+```{r}
+# Input the Agresti Myers–Briggs data set
+MBTI = read.table("http://users.stat.ufl.edu/~aa/intro-cda/data/MBTI.dat",header=T)
+kable(cbind(MBTI[1:8,c(1,2,3,4,7)],MBTI[9:16,c(1,2,3,4,7)]))
+```
+\normalsize
+
+(a) __[3 marks]__ Consider first just the scales of Extroversion/Introversion (E/I) and Judging/Perceiving (J/P). Produce the appropriate 2-way contingency table and fit the main effects log linear model to the data. Perform a formal test of the null hypothesis of independence between the two scales. Be sure to carefully state the null and alternative hypotheses in terms of the regression coefficients (be explicit about which model you are referring to) and give the formula of the test statistic and its asymptotic distribution under the null hypothesis. What is the conclusion of the test?
+
+```{r}
+# E and J
+77+106+23+31
+
+# E and P
+42+79+18+80
+
+# I and J
+140+138+13+31
+
+# I and P
+52+106+35+79
+```
+
+```{r}
+t <- matrix(c(237,322,219,272), ncol=2, byrow=TRUE)
+colnames(t) <- c("E", "I")
+rownames(t) <- c("J", "P")
+as.table(t)
+```
+
+```{r}
+ei <- c(1,1,2,2)
+jp <- c(1,2,1,2)
+num <- c(237,322,219,272)
+model <- glm(num~factor(ei)+factor(jp), family=poisson(link="log"))
+summary(model)
+```
+
+$$
+\begin{aligned}
+H_0: \pi_{ij}=\pi_i*\pi_j\text{ for all } i\in \text{("E","I") and }j\in\text{("J", "P")}\\
+H_A: \pi_{ij}\neq\pi_i*\pi_j\text{ for some } i\in \text{("E","I") and }j\in\text{("J", "P")}\\
+\text{The test statistic is Residual deviance }D = 0.51756\sim X^2_{(1)}
+\end{aligned}
+$$
+
+```{r}
+1-pchisq(0.51756, 1)
+```
+
+**Comment:** 0.4718844>0.05, there is no evidence against the null hypothesis. We conclude that EI and JP are independent coefficients.
+
+(b) __[2 marks]__ For the fitted model from (a) calculate (by hand, using the relevant formula) the deviance residual for the count of individuals who are Introverted and Judging.
+
+$$
+\begin{aligned}
+\text{The expected value }\hat{\mu}=\frac{(237+322)*(322+272)}{(237+322+322+272)}=287.984\\
+d=2[y_{IJ}*log(\frac{y_{IJ}}{\hat{\mu}})-(y_{IJ}-\hat{\mu})]=2[287.984*log(\frac{322}{287.984})-(322-287.984)]=-3.727\\
+\text{The deviance residual is } r=sign(y_{IJ}-\hat{\mu})\sqrt{|d|}=\sqrt{|d|}=\sqrt{3.727}=1.9305
+\end{aligned}
+$$
+
+(c) __[2 marks]__ Working with the 4-way table, fit the homogeneous association model (includes all main effects and 2-way interactions). Use a deviance test to compare the fit of this model to the saturated model. Be sure to carefully state the null and alternative hypotheses in terms of the regression coefficients (be explicit about which model you are referring to) and give the formula of the test statistic and its asymptotic distribution under the null hypothesis. What is the conclusion of the test?
+
+$$
+H_0: u_{ijk}^{EST}=u_{ikl}^{ETJ}=u_{ijl}^{ESJ}=u_{jkl}^{STJ}=u_{ijkl}^{ESTJ}=0 \text{ for all i,j,k,l }\\
+H_A: \text{Some of them are not 0 for some i,j,k,l}
+$$
+
+```{r}
+E <- c(rep(1,8), rep(0,8))
+E <- factor(E)
+S <- c(1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0)
+S <- factor(S)
+T <- c(1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0)
+T <- factor(T)
+J <- c(1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0)
+J <- factor(J)
+num <- c()
+model2 <- glm(MBTI$n~E*S+E*T+E*J+S*J+S*T+J*T, family = poisson(link = "log"))
+summary(model2)
+```
+
+$$
+\text{The Deviance }D=2*\sum_{i=1}^2\sum_{j=1}^2\sum_{k=1}^2\sum_{l=1}^2O_{ijkl}*log(\frac{O_{ijkl}}{E_{ijkl}})\\
+=10.162 \sim X^2
+_{(5)}
+$$
+
+```{r}
+1-pchisq(10.162, 5)
+```
+
+**Comment:** Since the p-value 0.07077304 > 0.05, we can not reject the null hypothesis. Therefore, we conclude that the homogeneous association model is adequate.
+
+(d) __[3 marks]__ Fit a series of log-linear models and find the model that is most appropriate for characterizing the association between the E/I, S/N, T/F, and J/P factors. Do not use automatic model selection functions/procedures. Print the R summary object of your final fitted model. Provide a precise interpretation of one interaction term from your final model.
+
+```{r}
+#saturated
+model1 <- glm(MBTI$n~E*S*T*J, family = poisson(link = "log"))
+model2 <- glm(MBTI$n~E*S+E*T+E*J+S*J+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model2$deviance-model1$deviance, model2$df.residual-model1$df.residual)
+model3 <- glm(MBTI$n~E*S+E*T+E*J+S*J+S*T, family = poisson(link = "log"))
+1-pchisq(model3$deviance-model2$deviance, model3$df.residual-model2$df.residual)
+model4 <- glm(MBTI$n~E*S+E*T+E*J+S*J+J*T, family = poisson(link = "log"))
+1-pchisq(model4$deviance-model2$deviance, model4$df.residual-model2$df.residual)
+model5 <- glm(MBTI$n~E*S+E*T+E*J+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model5$deviance-model2$deviance, model5$df.residual-model2$df.residual)
+model6 <- glm(MBTI$n~E*S+E*T+S*J+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model6$deviance-model2$deviance, model6$df.residual-model2$df.residual)
+model7 <- glm(MBTI$n~E*S+E*J+S*J+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model7$deviance-model2$deviance, model7$df.residual-model2$df.residual)
+model8 <- glm(MBTI$n~E*T+E*J+S*J+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model8$deviance-model2$deviance, model8$df.residual-model2$df.residual)
+
+#We pick model5 and continue
+model9 <- glm(MBTI$n~E*S+E*T+E*J+S*T, family = poisson(link = "log"))
+1-pchisq(model9$deviance-model5$deviance, model9$df.residual-model5$df.residual)
+model10 <- glm(MBTI$n~E*S+E*T+E*J+J*T, family = poisson(link = "log"))
+1-pchisq(model10$deviance-model5$deviance, model10$df.residual-model5$df.residual)
+model11 <- glm(MBTI$n~E*S+E*T+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model11$deviance-model5$deviance, model11$df.residual-model5$df.residual)
+model12 <- glm(MBTI$n~E*S+E*J+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model12$deviance-model5$deviance, model12$df.residual-model5$df.residual)
+model13 <- glm(MBTI$n~E*T+E*J+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model13$deviance-model5$deviance, model13$df.residual-model5$df.residual)
+
+#We pick model11 and continue
+model14 <- glm(MBTI$n~E*S+E*T+S*T, family = poisson(link = "log"))
+1-pchisq(model14$deviance-model11$deviance, model14$df.residual-model11$df.residual)
+model15 <- glm(MBTI$n~E*S+E*T+J*T, family = poisson(link = "log"))
+1-pchisq(model15$deviance-model11$deviance, model15$df.residual-model11$df.residual)
+model16 <- glm(MBTI$n~E*S+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model16$deviance-model11$deviance, model16$df.residual-model11$df.residual)
+model17 <- glm(MBTI$n~E*T+S*T+J*T, family = poisson(link = "log"))
+1-pchisq(model17$deviance-model11$deviance, model17$df.residual-model11$df.residual)
+
+#We pick model 16 and continue
+model18 <- glm(MBTI$n~E*S+E*T, family = poisson(link = "log"))
+1-pchisq(model18$deviance-model16$deviance, model18$df.residual-model16$df.residual)
+model19 <- glm(MBTI$n~E*S+S*T, family = poisson(link = "log"))
+1-pchisq(model19$deviance-model16$deviance, model19$df.residual-model16$df.residual)
+model20 <- glm(MBTI$n~E*T+S*T, family = poisson(link = "log"))
+1-pchisq(model20$deviance-model16$deviance, model20$df.residual-model16$df.residual)
+
+#We can not further reduce the model
+```
+
+```{r}
+summary(model16)
+```
+
+**Comments:** Therefore, model 16 is the final fitted model. E*S represents the association between E and S.
+
+(e) __[2 marks]__ For introverts, what does your final model from (d) tell you about the relative probabilities for the other three scales of their Myers–Briggs personality type? Include estimates, where appropriate.
+
+**Comments:** From the fitted model, we see that the association E1:S1 is -0.32190. This means that introvert person are less likely to be intuitive. Since the association S1:T1 is 0.58786. This means that intuitive person will more likely to be feeling. Since the association T1:J1 is 0.66001. This means that the feeling person are more likely to be perceiving. Therefore, combining them together, an introvert person are liekly to be sensing, thinking and judging.
